@@ -1,0 +1,35 @@
+.toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  transition:
+    background-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
+}
+
+.toggle:hover {
+  background: var(--neutral-soft);
+  color: var(--text);
+}
+
+.sun,
+.moon {
+  grid-area: 1 / 1;
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    opacity var(--dur) var(--ease-out);
+}
+
+.toggle[data-theme-state="dark"] .sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+}
+
+.toggle[data-theme-state="light"] .moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.6);
+}

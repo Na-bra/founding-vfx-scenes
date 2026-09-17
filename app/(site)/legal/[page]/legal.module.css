@@ -1,0 +1,43 @@
+.wrap {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.draft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.section h2 {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.section p {
+  color: var(--text-muted);
+}
+
+.section p + p {
+  margin-top: 10px;
+}
+
+.contact {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.contact a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

@@ -1,0 +1,62 @@
+.stack {
+  position: relative;
+  z-index: 51;
+}
+
+.bar {
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding-block: 6px;
+  text-align: center;
+}
+
+.inner svg {
+  flex-shrink: 0;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.info {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.info svg {
+  color: var(--accent-text);
+}
+
+.success {
+  background: var(--success-soft);
+}
+
+.warning {
+  background: var(--warning-soft);
+}
+
+.demo {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.demo strong {
+  color: var(--text);
+  font-weight: 600;
+}

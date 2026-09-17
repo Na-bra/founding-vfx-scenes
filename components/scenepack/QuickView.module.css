@@ -1,0 +1,143 @@
+.trigger {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: rgb(8 8 12 / 0.55);
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out),
+    background-color var(--dur) var(--ease-out);
+}
+
+.trigger:hover {
+  background: rgb(8 8 12 / 0.8);
+  transform: scale(1.06);
+}
+
+@media (hover: hover) {
+  .trigger {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  :global(article):hover .trigger,
+  .trigger:focus-visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.dialog {
+  width: min(720px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden auto;
+}
+
+.dialog[open] {
+  animation: dialog-in var(--dur-slow) var(--ease-out);
+}
+
+.dialog::backdrop {
+  background: var(--overlay);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+}
+
+.panel {
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: rgb(8 8 12 / 0.6);
+  color: #fff;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.media {
+  position: relative;
+}
+
+.media::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 40%;
+  background: linear-gradient(transparent, var(--surface));
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 clamp(18px, 4vw, 32px) clamp(20px, 4vw, 32px);
+  margin-top: -28px;
+  position: relative;
+}
+
+.title {
+  font-size: clamp(24px, 4vw, 32px);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.characters {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.characters a {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.characters a:hover {
+  color: var(--accent-text);
+}
+
+.description {
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.actions > * {
+  flex: 1 1 200px;
+}

@@ -1,0 +1,129 @@
+.hero {
+  position: relative;
+  isolation: isolate;
+  margin-top: calc(var(--nav-height) * -1);
+  padding-top: calc(var(--nav-height) + clamp(16px, 3vw, 28px));
+  padding-bottom: clamp(28px, 5vw, 48px);
+  overflow: hidden;
+}
+
+.banner {
+  position: absolute;
+  inset: 0 0 auto;
+  height: clamp(300px, 46vw, 520px);
+  z-index: -1;
+}
+
+.banner > div:first-child {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+:root[data-theme="light"] .banner > div:first-child {
+  opacity: 0.55;
+}
+
+.fade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 35%, transparent) 0%, color-mix(in srgb, var(--bg) 55%, transparent) 50%, var(--bg) 100%),
+    linear-gradient(90deg, color-mix(in srgb, var(--bg) 60%, transparent) 0%, transparent 70%);
+}
+
+.inner {
+  position: relative;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vw, 36px);
+  padding-top: clamp(32px, 7vw, 110px);
+}
+
+.hero[data-media="none"] .row {
+  padding-top: clamp(48px, 9vw, 140px);
+}
+
+@media (min-width: 760px) {
+  .row {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
+
+.poster {
+  width: clamp(150px, 20vw, 230px);
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-strong);
+  animation: fade-up var(--dur-slow) var(--ease-out) both;
+}
+
+.avatar {
+  position: relative;
+  width: clamp(110px, 14vw, 170px);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg), 0 0 0 4px var(--bg), 0 0 0 5px var(--border-strong);
+  animation: fade-up var(--dur-slow) var(--ease-out) both;
+}
+
+.initials {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(36px, 5vw, 56px);
+  color: #fff;
+  text-shadow: 0 4px 20px rgb(0 0 0 / 0.4);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  animation: fade-up var(--dur-slow) var(--ease-out) 60ms both;
+}
+
+.kicker {
+  flex-wrap: wrap;
+}
+
+.kicker a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.title {
+  font-size: clamp(38px, 6.5vw, 76px);
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.description {
+  max-width: 64ch;
+  font-size: clamp(15px, 1.5vw, 17px);
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}

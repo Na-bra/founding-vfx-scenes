@@ -1,0 +1,102 @@
+.button {
+  --btn-bg: transparent;
+  --btn-fg: var(--text);
+  --btn-border: transparent;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  isolation: isolate;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.button:disabled,
+.button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button svg {
+  flex-shrink: 0;
+}
+
+.sm {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13.5px;
+  gap: 6px;
+}
+
+.lg {
+  min-height: 54px;
+  padding: 0 26px;
+  font-size: 16px;
+  gap: 10px;
+}
+
+.block {
+  width: 100%;
+}
+
+.primary {
+  --btn-bg: var(--accent);
+  --btn-fg: var(--accent-contrast);
+  box-shadow: var(--shadow-glow);
+}
+
+.primary:hover:not(:disabled) {
+  --btn-bg: var(--accent-hover);
+  box-shadow: 0 14px 44px -10px var(--accent-glow);
+}
+
+.secondary {
+  --btn-bg: var(--surface-2);
+  --btn-border: var(--border-strong);
+}
+
+.secondary:hover:not(:disabled) {
+  --btn-bg: var(--surface-3);
+}
+
+.ghost {
+  --btn-fg: var(--text-muted);
+}
+
+.ghost:hover:not(:disabled) {
+  --btn-bg: var(--neutral-soft);
+  --btn-fg: var(--text);
+}
+
+.glass {
+  --btn-bg: rgb(255 255 255 / 0.1);
+  --btn-fg: var(--text-on-media);
+  --btn-border: rgb(255 255 255 / 0.18);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+.glass:hover:not(:disabled) {
+  --btn-bg: rgb(255 255 255 / 0.18);
+}
