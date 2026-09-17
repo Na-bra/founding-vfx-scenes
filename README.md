@@ -2,7 +2,7 @@
 
 A ScenePack discovery, request and download platform for editors. Built with Next.js 16 (App Router), React 19 and TypeScript.
 
-> **Status:** Foundation release (Phases 1–4 of the roadmap). The site runs on clearly labeled **demo data** until the PostgreSQL repository is connected in Phase 5.
+> **Status:** Phases 1–5. Content is stored in **Supabase** (PostgreSQL). Set `DATA_SOURCE=sample` to run on built-in demo data without a database.
 
 ## Quick start
 
@@ -17,6 +17,7 @@ npm run dev                  # http://localhost:3000
 | `npm run dev` / `build` / `start` | Next.js dev server / production build / serve build |
 | `npm run check` | Lint, typecheck, unit tests and Prisma schema validation |
 | `npm test` | Vitest unit tests (search, repository, storage, download flow, SigV4 signing) |
+| `npm run db:migrate` / `db:seed` / `db:studio` | Apply migrations / load demo content / browse data |
 
 ## Docker
 
@@ -74,13 +75,14 @@ tests/unit/          Vitest suites
 - **No fake numbers.** Popularity sorts and Trending stay hidden until `FEATURE_ANALYTICS=true`. "Popular Shows" is ranked by library size, and says so. Demo data is labeled site-wide.
 - **Unbuilt features say so.** Voting and request submissions are visible but clearly marked as upcoming (`FEATURE_REQUEST_SUBMISSIONS`).
 
-### Connecting the database (Phase 5)
+### Database (Supabase)
 
-1. Set `DATABASE_URL`, run `npx prisma migrate dev`.
-2. Implement `ContentRepository` with Prisma (`lib/data/prisma/repository.ts`) and a Prisma-backed `StorageRepository`.
-3. Return it from `getRepository()` when `DATA_SOURCE=database`.
+1. Fill the Supabase section of `.env` (`DATABASE_URL` = transaction pooler with `?pgbouncer=true`, `DIRECT_URL` = session pooler).
+2. `npm run db:migrate` — creates all tables with Row Level Security enabled (the public Supabase API can't read them; the app uses server-side connections only).
+3. `npm run db:seed` — optional demo content (`-- --reset` replaces all content).
+4. Set `DATA_SOURCE=database`.
 
-No page or component changes are required.
+The app loads published content into an in-memory snapshot refreshed every 30s (`CONTENT_SNAPSHOT_TTL_MS`), so admin changes appear within seconds and pages render in milliseconds. `RUN_DB_TESTS=1 npx vitest run tests/integration` checks the database repository against the demo repository.
 
 ## Configuration
 
@@ -91,7 +93,7 @@ All settings live in `.env.example`. Social links render as "coming soon" until 
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 1–4 | Design system, browsing, entity pages, search/filter/sort | ✅ Done |
-| 5 | PostgreSQL repository | Schema ready |
+| 5 | Supabase database | ✅ Done |
 | 6 | Admin dashboard (CRUD, scheduling, audit log) | — |
 | 7 | Request submissions, voting, duplicate detection & merge | Search-first flow ready |
 | 8 | Accounts, synced favorites, notifications | — |

@@ -10,7 +10,7 @@ const GB = 1024 ** 3;
 const MB = 1024 ** 2;
 
 function tech(partial: Partial<TechnicalSpec> & Pick<TechnicalSpec, "resolution" | "fps" | "clipCount" | "fileSizeBytes">): TechnicalSpec {
-  return { format: "MP4 (H.264)", aspectRatio: "16:9", ...partial };
+  return { format: "MP4 (H.264)", aspectRatio: "16:9", ...partial, fileSizeBytes: Math.round(partial.fileSizeBytes) };
 }
 
 type Seed = Omit<ScenePack, "previews" | "editing" | "version" | "status" | "featured" | "createdAt" | "updatedAt" | "publishedAt"> &
