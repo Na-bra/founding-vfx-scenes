@@ -1,0 +1,52 @@
+# Local production-like run:
+#   docker compose up --build
+#
+# Build-time public values come from .env (NEXT_PUBLIC_*); runtime server
+# settings and secrets are passed via env_file and never baked into the image.
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+        NEXT_PUBLIC_YOUTUBE_URL: ${NEXT_PUBLIC_YOUTUBE_URL:-}
+        NEXT_PUBLIC_TIKTOK_URL: ${NEXT_PUBLIC_TIKTOK_URL:-}
+        NEXT_PUBLIC_DISCORD_INVITE_URL: ${NEXT_PUBLIC_DISCORD_INVITE_URL:-}
+        NEXT_PUBLIC_ASSET_HOST: ${NEXT_PUBLIC_ASSET_HOST:-}
+    image: foundingvfx:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATA_SOURCE: ${DATA_SOURCE:-sample}
+    ports:
+      - "${PORT:-3000}:3000"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # PostgreSQL for Phase 5. Not started by default:
+  #   docker compose --profile db up
+  db:
+    image: postgres:17-alpine
+    profiles: ["db"]
+    environment:
+      POSTGRES_DB: foundingvfx
+      POSTGRES_USER: ${POSTGRES_USER:-foundingvfx}
+      # Local development only; bound to 127.0.0.1. Set a real password in .env.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-foundingvfx-dev}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-foundingvfx} -d foundingvfx"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -9,6 +9,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Self-contained server bundle for the Docker image (see Dockerfile).
+  output: "standalone",
   poweredByHeader: false,
   images: {
     // Add the public hostnames of uploaded artwork (e.g. an R2 custom domain) here.

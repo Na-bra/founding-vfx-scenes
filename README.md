@@ -18,6 +18,27 @@ npm run dev                  # http://localhost:3000
 | `npm run check` | Lint, typecheck, unit tests and Prisma schema validation |
 | `npm test` | Vitest unit tests (search, repository, storage, download flow, SigV4 signing) |
 
+## Docker
+
+```bash
+docker compose up --build          # http://localhost:3000
+docker compose --profile db up     # also starts PostgreSQL (for Phase 5)
+```
+
+Or without Compose:
+
+```bash
+docker build -t foundingvfx \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://foundingvfx.example \
+  --build-arg NEXT_PUBLIC_TIKTOK_URL=https://www.tiktok.com/@foundingvfx8 .
+docker run -p 3000:3000 --env-file .env foundingvfx
+```
+
+- Multi-stage build on `node:24-alpine` using Next.js `output: "standalone"`; runs as a non-root user.
+- **`NEXT_PUBLIC_*` values are baked in at build time** (pass them as build args, or put them in `.env` for Compose). Change them → rebuild.
+- Server settings and secrets (`DATA_SOURCE`, `FEATURE_*`, storage keys, `RATE_LIMIT_SALT`, `DATABASE_URL`) are read at runtime from the environment and never copied into the image — `.env` is excluded by `.dockerignore`.
+- Health check: `GET /api/health`.
+
 ## What's built
 
 **Public site** — homepage (cinematic hero, featured, recently added, popular shows, channels, genres, playlists, collections, most-wanted and latest requests, what's new) · ScenePack library with combinable filters, sorting, pagination and quick view · ScenePack detail pages (metadata, editing facts, previews, similar packs, favorite/share/copy/report) · show, character, channel, genre, playlist and collection pages · global search with autocomplete and a `/` or `⌘K` command palette · request board with tabs and filters, request detail pages, search-first "request a ScenePack" flow · device-local favorites · Surprise Me · changelog · legal page scaffolds · contact · 404/error/loading/empty states · dark/light theme (persisted, follows OS until chosen) · full mobile layouts.
