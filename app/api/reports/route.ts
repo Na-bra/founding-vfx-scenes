@@ -9,11 +9,17 @@ const reportSchema = z.object({
   details: z.string().trim().max(500).optional(),
 });
 
+/**
+ * Same-origin check against the host the browser actually addressed.
+ * `request.nextUrl.host` reflects the server's bind address in standalone
+ * mode (e.g. 0.0.0.0), so compare with the Host / X-Forwarded-Host headers.
+ */
 function isSameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
-  if (!origin) return false;
+  const host = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || request.headers.get("host");
+  if (!origin || !host) return false;
   try {
-    return new URL(origin).host === request.nextUrl.host;
+    return new URL(origin).host === host;
   } catch {
     return false;
   }

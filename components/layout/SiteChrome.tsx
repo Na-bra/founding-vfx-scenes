@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { connection } from "next/server";
 import { getRepository } from "@/lib/data";
 import { QuickViewProvider } from "@/components/scenepack/QuickView";
 import { AnnouncementBar } from "./AnnouncementBar";
@@ -8,6 +9,8 @@ import { SocialLinks } from "./SocialLinks";
 
 /** Public-site shell: announcements, navigation, main landmark and footer. */
 export async function SiteChrome({ children }: { children: ReactNode }) {
+  // Always render at request time (including the 404 page) so builds never query the database.
+  await connection();
   const repo = getRepository();
   const announcements = await repo.getActiveAnnouncements();
 

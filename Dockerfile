@@ -11,7 +11,8 @@ FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+# Scripts are skipped here; the Prisma client is generated during `npm run build`.
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --ignore-scripts
 
 # ─── builder: compile the app ─────────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS builder
