@@ -1,0 +1,110 @@
+.artwork {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+  container-type: inline-size;
+}
+
+.landscape {
+  aspect-ratio: 16 / 9;
+}
+
+.poster {
+  aspect-ratio: 2 / 3;
+}
+
+.banner {
+  aspect-ratio: 21 / 9;
+}
+
+.square {
+  aspect-ratio: 1;
+}
+
+.image {
+  object-fit: cover;
+}
+
+.generated {
+  background:
+    radial-gradient(120% 90% at var(--x) var(--y), color-mix(in srgb, var(--c1) 85%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 80% at calc(100% - var(--x)) 100%, color-mix(in srgb, var(--c3) 55%, transparent) 0%, transparent 60%),
+    linear-gradient(var(--angle), var(--c2) 0%, color-mix(in srgb, var(--c2) 70%, #000) 100%);
+}
+
+/* Diagonal light leak */
+.leak {
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(
+    calc(var(--angle) + 70deg),
+    transparent 40%,
+    color-mix(in srgb, var(--c3) 35%, transparent) 48%,
+    rgb(255 255 255 / 0.18) 50%,
+    transparent 58%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.7;
+}
+
+/* Subtle letterbox / scanline texture */
+.bars {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.12) 0 1px, transparent 1px 3px);
+  opacity: 0.35;
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.35;
+}
+
+.label {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7cqi 7cqi 6cqi;
+  color: rgb(255 255 255 / 0.94);
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.45);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  line-height: 0.92;
+  font-size: clamp(12px, calc(9.5cqi * var(--fit, 1)), 60px);
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sublabel {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 3.4cqi, 13px);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.poster .title {
+  font-size: clamp(12px, calc(12.5cqi * var(--fit, 1)), 60px);
+}
+
+.banner .title {
+  font-size: clamp(28px, 7cqi, 110px);
+  opacity: 0.16;
+}
+
+.banner .sublabel {
+  display: none;
+}

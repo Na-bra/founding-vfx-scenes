@@ -1,0 +1,644 @@
+// FoundingVFX — PostgreSQL schema (Phase 5).
+//
+// Mirrors the domain types in `types/content.ts`. A Prisma-backed
+// implementation of `ContentRepository` (lib/data/repository.ts) will read
+// from these models; pages never query the database directly.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum PublishStatus {
+  draft
+  scheduled
+  published
+  unpublished
+}
+
+enum Visibility {
+  public
+  unlisted
+  private
+}
+
+enum ShowFormat {
+  series
+  film
+  special
+}
+
+enum Resolution {
+  r720p  @map("720p")
+  r1080p @map("1080p")
+  r1440p @map("1440p")
+  r4k    @map("4K")
+}
+
+enum RequestStatus {
+  pending
+  under_review
+  planned
+  in_progress
+  completed
+  published
+  declined
+}
+
+enum ReportReason {
+  broken_download
+  incorrect_information
+  incorrect_thumbnail
+  duplicate
+  other
+}
+
+enum ReportStatus {
+  open
+  resolved
+  dismissed
+}
+
+enum Role {
+  owner
+  administrator
+  moderator
+  uploader
+  member
+}
+
+enum StorageProvider {
+  external_url
+  google_drive
+  mega
+  terabox
+  cloudflare_r2
+  backblaze_b2
+}
+
+enum StorageHealth {
+  unknown
+  working
+  needs_attention
+}
+
+enum CollectionItemType {
+  show
+  scenepack
+  playlist
+}
+
+enum AnnouncementTone {
+  info
+  success
+  warning
+}
+
+// ───────────────────────────── Accounts ─────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  username     String    @unique
+  /// Argon2id hash. Plaintext passwords are never stored.
+  passwordHash String?
+  role         Role      @default(member)
+  discordName  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+
+  sessions      Session[]
+  favorites     Favorite[]
+  requests      SceneRequest[]  @relation("RequestAuthor")
+  votes         RequestVote[]
+  downloads     DownloadEvent[]
+  notifications Notification[]
+  playlists     Playlist[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id
+  /// SHA-256 of the session token; the raw token only lives in the httpOnly cookie.
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ───────────────────────────── Taxonomy ─────────────────────────────
+
+model Channel {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String   @default("")
+  artworkUrl  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  shows    Show[]
+  requests SceneRequest[]
+
+  @@map("channels")
+}
+
+model Genre {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String  @default("")
+  artworkUrl  String?
+
+  shows      ShowGenre[]
+  scenePacks ScenePackGenre[]
+  requests   SceneRequest[]
+
+  @@map("genres")
+}
+
+model Tag {
+  slug       String         @id
+  label      String
+  scenePacks ScenePackTag[]
+
+  @@map("tags")
+}
+
+model Show {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  aliases     String[]
+  format      ShowFormat    @default(series)
+  description String        @default("")
+  channelId   String
+  yearStart   Int
+  yearEnd     Int?
+  posterUrl   String?
+  bannerUrl   String?
+  status      PublishStatus @default(draft)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  channel    Channel        @relation(fields: [channelId], references: [id], onDelete: Restrict)
+  genres     ShowGenre[]
+  seasons    Season[]
+  characters Character[]
+  scenePacks ScenePack[]
+  requests   SceneRequest[]
+
+  @@index([channelId])
+  @@index([status])
+  @@map("shows")
+}
+
+model ShowGenre {
+  showId  String
+  genreId String
+  show    Show   @relation(fields: [showId], references: [id], onDelete: Cascade)
+  genre   Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([showId, genreId])
+  @@map("show_genres")
+}
+
+model Season {
+  id           String    @id @default(cuid())
+  showId       String
+  number       Int
+  year         Int?
+  episodeCount Int?
+  show         Show      @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episodes     Episode[]
+
+  @@unique([showId, number])
+  @@map("seasons")
+}
+
+model Episode {
+  id       String  @id @default(cuid())
+  seasonId String
+  number   Int
+  title    String?
+  season   Season  @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, number])
+  @@map("episodes")
+}
+
+model Character {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  aliases     String[]
+  showId      String
+  actor       String?
+  description String   @default("")
+  artworkUrl  String?
+
+  show       Show                 @relation(fields: [showId], references: [id], onDelete: Restrict)
+  scenePacks ScenePackCharacter[]
+
+  @@index([showId])
+  @@map("characters")
+}
+
+// ───────────────────────────── ScenePacks ─────────────────────────────
+
+model ScenePack {
+  id           String  @id @default(cuid())
+  slug         String  @unique
+  title        String
+  description  String  @default("")
+  showId       String
+  season       Int?
+  episode      Int?
+  episodeTitle String?
+  releaseYear  Int?
+
+  thumbnailUrl String?
+  thumbnailAlt String?
+
+  resolution    Resolution
+  fps           Int
+  format        String
+  fileSizeBytes BigInt
+  clipCount     Int
+  aspectRatio   String?
+  hasAudio      Boolean?
+
+  // Optional editing facts — null means unknown and is not displayed.
+  isRaw         Boolean?
+  isClean       Boolean?
+  isColorGraded Boolean?
+  isUpscaled    Boolean?
+  hasWatermark  Boolean?
+
+  version     String        @default("1.0")
+  status      PublishStatus @default(draft)
+  featured    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  /// For scheduled packs this is the go-live time.
+  publishedAt DateTime?
+
+  show       Show                 @relation(fields: [showId], references: [id], onDelete: Restrict)
+  characters ScenePackCharacter[]
+  genres     ScenePackGenre[]
+  tags       ScenePackTag[]
+  previews   PreviewMedia[]
+  versions   ScenePackVersion[]
+  storage    StorageObject[]
+  playlists  PlaylistItem[]
+  favorites  Favorite[]
+  downloads  DownloadEvent[]
+  reports    Report[]
+  fulfills   SceneRequest[]       @relation("FulfilledBy")
+
+  @@index([status, publishedAt])
+  @@index([showId, season])
+  @@index([featured])
+  @@map("scenepacks")
+}
+
+model ScenePackCharacter {
+  scenePackId String
+  characterId String
+  scenePack   ScenePack @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@id([scenePackId, characterId])
+  @@index([characterId])
+  @@map("scenepack_characters")
+}
+
+model ScenePackGenre {
+  scenePackId String
+  genreId     String
+  scenePack   ScenePack @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+  genre       Genre     @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([scenePackId, genreId])
+  @@index([genreId])
+  @@map("scenepack_genres")
+}
+
+model ScenePackTag {
+  scenePackId String
+  tagSlug     String
+  scenePack   ScenePack @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+  tag         Tag       @relation(fields: [tagSlug], references: [slug], onDelete: Cascade)
+
+  @@id([scenePackId, tagSlug])
+  @@index([tagSlug])
+  @@map("scenepack_tags")
+}
+
+model PreviewMedia {
+  id              String    @id @default(cuid())
+  scenePackId     String
+  kind            String // "image" | "video"
+  url             String
+  posterUrl       String?
+  alt             String?
+  durationSeconds Int?
+  position        Int       @default(0)
+  scenePack       ScenePack @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+
+  @@index([scenePackId, position])
+  @@map("preview_media")
+}
+
+model ScenePackVersion {
+  id              String    @id @default(cuid())
+  scenePackId     String
+  version         String
+  notes           String?
+  storageObjectId String?
+  createdAt       DateTime  @default(now())
+  scenePack       ScenePack @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+
+  @@unique([scenePackId, version])
+  @@map("scenepack_versions")
+}
+
+/// Server-only. Never serialized to clients.
+model StorageObject {
+  id            String          @id @default(cuid())
+  scenePackId   String
+  provider      StorageProvider
+  objectId      String?
+  downloadUrl   String?
+  fileSizeBytes BigInt?
+  fileType      String?
+  checksum      String?
+  isCurrent     Boolean         @default(true)
+  health        StorageHealth   @default(unknown)
+  lastCheckedAt DateTime?
+  lastError     String?
+  createdAt     DateTime        @default(now())
+  scenePack     ScenePack       @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+
+  @@index([scenePackId, isCurrent])
+  @@index([health])
+  @@index([checksum])
+  @@map("storage_objects")
+}
+
+// ───────────────────────────── Curation ─────────────────────────────
+
+model Playlist {
+  id           String         @id @default(cuid())
+  slug         String         @unique
+  title        String
+  description  String         @default("")
+  thumbnailUrl String?
+  visibility   Visibility     @default(public)
+  featured     Boolean        @default(false)
+  /// Null for staff playlists; set for future personal playlists.
+  ownerId      String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  owner        User?          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  items        PlaylistItem[]
+
+  @@map("playlists")
+}
+
+model PlaylistItem {
+  playlistId  String
+  scenePackId String
+  position    Int
+  playlist    Playlist  @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  scenePack   ScenePack @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, scenePackId])
+  @@index([playlistId, position])
+  @@map("playlist_scenepacks")
+}
+
+model Collection {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  title       String
+  description String           @default("")
+  artworkUrl  String?
+  featured    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  items       CollectionItem[]
+
+  @@map("collections")
+}
+
+/// Polymorphic item: exactly one of the target ids matches `type` (enforced in the service layer).
+model CollectionItem {
+  id           String             @id @default(cuid())
+  collectionId String
+  type         CollectionItemType
+  targetId     String
+  position     Int
+  collection   Collection         @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, type, targetId])
+  @@map("collection_items")
+}
+
+// ───────────────────────────── Community ─────────────────────────────
+
+model SceneRequest {
+  id                     String        @id @default(cuid())
+  title                  String
+  showTitle              String
+  showId                 String?
+  characterName          String?
+  description            String        @default("")
+  year                   Int?
+  season                 Int?
+  episode                Int?
+  genreId                String?
+  channelId              String?
+  preferredResolution    Resolution?
+  preferredFps           Int?
+  referenceUrl           String?
+  referenceImageUrl      String?
+  contactDiscord         String?
+  status                 RequestStatus @default(pending)
+  /// Denormalized for sorting; source of truth is RequestVote.
+  voteCount              Int           @default(0)
+  highPriority           Boolean       @default(false)
+  authorId               String?
+  /// Set when this request was merged into a canonical request.
+  mergedIntoId           String?
+  fulfilledByScenePackId String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  show        Show?          @relation(fields: [showId], references: [id], onDelete: SetNull)
+  genre       Genre?         @relation(fields: [genreId], references: [id], onDelete: SetNull)
+  channel     Channel?       @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  author      User?          @relation("RequestAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  mergedInto  SceneRequest?  @relation("Merge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  merged      SceneRequest[] @relation("Merge")
+  fulfilledBy ScenePack?     @relation("FulfilledBy", fields: [fulfilledByScenePackId], references: [id], onDelete: SetNull)
+  votes       RequestVote[]
+
+  @@index([status, voteCount])
+  @@index([createdAt])
+  @@map("requests")
+}
+
+model RequestVote {
+  id        String       @id @default(cuid())
+  requestId String
+  /// Authenticated vote.
+  userId    String?
+  /// Anonymous vote: salted hash of a signed device token (never a raw IP).
+  voterHash String?
+  createdAt DateTime     @default(now())
+  request   SceneRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user      User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, userId])
+  @@unique([requestId, voterHash])
+  @@map("request_votes")
+}
+
+model Favorite {
+  userId      String
+  scenePackId String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenePack   ScenePack @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+
+  @@id([userId, scenePackId])
+  @@map("favorites")
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  scenePackId String
+  reason      ReportReason
+  details     String?
+  status      ReportStatus @default(open)
+  createdAt   DateTime     @default(now())
+  resolvedAt  DateTime?
+  scenePack   ScenePack    @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("reports")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  kind      String
+  title     String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ───────────────────────────── Analytics (aggregate, privacy-minimal) ─────────────────────────────
+
+/// Only stored for signed-in users who keep download history on; clearable.
+model DownloadEvent {
+  id          String    @id @default(cuid())
+  userId      String
+  scenePackId String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenePack   ScenePack @relation(fields: [scenePackId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("downloads")
+}
+
+/// Daily counters — no personal identifiers.
+model DailyMetric {
+  day      DateTime @db.Date
+  metric   String // scenepack_view | download_click | page_view | request_vote
+  targetId String   @default("")
+  count    Int      @default(0)
+
+  @@id([day, metric, targetId])
+  @@map("daily_metrics")
+}
+
+model SearchQueryStat {
+  day        DateTime @db.Date
+  query      String
+  count      Int      @default(0)
+  zeroResult Int      @default(0)
+
+  @@id([day, query])
+  @@map("search_query_stats")
+}
+
+// ───────────────────────────── Operations ─────────────────────────────
+
+model Announcement {
+  id        String           @id @default(cuid())
+  message   String
+  href      String?
+  tone      AnnouncementTone @default(info)
+  active    Boolean          @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@map("announcements")
+}
+
+model ChangelogEntry {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  title     String
+  changes   String[]
+  createdAt DateTime @default(now())
+
+  @@map("changelog_entries")
+}
+
+/// Non-secret settings (social URLs, monetization toggles, trending weights).
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String
+  /// Changed field names and non-sensitive before/after values. Never secrets.
+  changes    Json?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FoundingVFX
 
-## Getting Started
+A ScenePack discovery, request and download platform for editors. Built with Next.js 16 (App Router), React 19 and TypeScript.
 
-First, run the development server:
+> **Status:** Foundation release (Phases 1–4 of the roadmap). The site runs on clearly labeled **demo data** until the PostgreSQL repository is connected in Phase 5.
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # optional — everything has safe defaults
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Script | What it does |
+| --- | --- |
+| `npm run dev` / `build` / `start` | Next.js dev server / production build / serve build |
+| `npm run check` | Lint, typecheck, unit tests and Prisma schema validation |
+| `npm test` | Vitest unit tests (search, repository, storage, download flow, SigV4 signing) |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What's built
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Public site** — homepage (cinematic hero, featured, recently added, popular shows, channels, genres, playlists, collections, most-wanted and latest requests, what's new) · ScenePack library with combinable filters, sorting, pagination and quick view · ScenePack detail pages (metadata, editing facts, previews, similar packs, favorite/share/copy/report) · show, character, channel, genre, playlist and collection pages · global search with autocomplete and a `/` or `⌘K` command palette · request board with tabs and filters, request detail pages, search-first "request a ScenePack" flow · device-local favorites · Surprise Me · changelog · legal page scaffolds · contact · 404/error/loading/empty states · dark/light theme (persisted, follows OS until chosen) · full mobile layouts.
 
-## Learn More
+**Infrastructure** — repository abstraction · provider-independent storage layer (Google Drive, MEGA, TeraBox, any HTTPS URL, Cloudflare R2 and Backblaze B2 with presigned URLs) · download gateway with monetization hook (off) · public read API · rate limiting · security headers · SEO metadata, sitemap, robots, Open Graph image, PWA manifest · full PostgreSQL schema.
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/
+  (site)/            Public pages (shared chrome: announcements, navbar, footer)
+  api/               Public JSON API — the future mobile app / Discord bot surface
+components/          UI, grouped by domain (scenepack, cards, requests, filters, layout, ui)
+config/              Non-secret configuration: site + social links, feature flags, monetization
+lib/
+  data/repository.ts The ContentRepository contract every page depends on
+  data/sample/       Demo implementation (in-memory)
+  data/storage.ts    Server-only storage records — kept apart from content data
+  search/            Text scoring + structured query parsing ("1080p henry 60fps")
+services/
+  storage/           StorageProvider interface + providers + SigV4 presigner
+  download/          Pack → storage → monetization → redirect
+  monetization/      Adapter hook, disabled by default
+  analytics/         Single call site for aggregate events (no-op until Phase 10)
+prisma/schema.prisma PostgreSQL schema for Phase 5
+tests/unit/          Vitest suites
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Key rules the code enforces
 
-## Deploy on Vercel
+- **No hard-coded content.** Channels, shows, genres and characters are records. The only content in source is the demo dataset in `lib/data/sample/`, which nothing else imports directly.
+- **Downloads are provider-independent.** A ScenePack's file lives in a `StorageObject`. Switching Google Drive → R2 changes the record, not the code. Storage fields never reach the browser; downloads go through `/download/[slug]`, which resolves the destination server-side.
+- **No fake numbers.** Popularity sorts and Trending stay hidden until `FEATURE_ANALYTICS=true`. "Popular Shows" is ranked by library size, and says so. Demo data is labeled site-wide.
+- **Unbuilt features say so.** Voting and request submissions are visible but clearly marked as upcoming (`FEATURE_REQUEST_SUBMISSIONS`).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Connecting the database (Phase 5)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Set `DATABASE_URL`, run `npx prisma migrate dev`.
+2. Implement `ContentRepository` with Prisma (`lib/data/prisma/repository.ts`) and a Prisma-backed `StorageRepository`.
+3. Return it from `getRepository()` when `DATA_SOURCE=database`.
+
+No page or component changes are required.
+
+## Configuration
+
+All settings live in `.env.example`. Social links render as "coming soon" until a URL is set — nothing is invented. Secrets (storage keys, database URL) are read only in server modules guarded by `server-only`.
+
+## Roadmap
+
+| Phase | Scope | Status |
+| --- | --- | --- |
+| 1–4 | Design system, browsing, entity pages, search/filter/sort | ✅ Done |
+| 5 | PostgreSQL repository | Schema ready |
+| 6 | Admin dashboard (CRUD, scheduling, audit log) | — |
+| 7 | Request submissions, voting, duplicate detection & merge | Search-first flow ready |
+| 8 | Accounts, synced favorites, notifications | — |
+| 9 | Storage health checks | Providers ready |
+| 10 | Analytics, trending, popular searches | Event hook ready |
+| 11 | Discord webhooks | — |
+| 12 | Monetization (ads, Linkvertise) | Hook ready, off |
+| 13–14 | Recommendations/AI, PWA, mobile API | Query parser, API and manifest ready |
+
+## Before launch
+
+- Replace legal page placeholders after legal review (`app/(site)/legal/[page]/page.tsx`).
+- Set `RATE_LIMIT_SALT`, `NEXT_PUBLIC_SITE_URL` and the social URLs.
+- Rate limiting is in-memory per instance — back it with Redis before running multiple instances.

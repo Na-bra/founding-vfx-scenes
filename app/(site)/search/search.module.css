@@ -1,0 +1,39 @@
+.header {
+  padding-block: clamp(28px, 5vw, 56px) clamp(20px, 3vw, 32px);
+}
+
+.bar {
+  max-width: 720px;
+  margin-top: 22px;
+  position: relative;
+  z-index: 5;
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 16px;
+  color: var(--text-muted);
+}
+
+.understood {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.more {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}

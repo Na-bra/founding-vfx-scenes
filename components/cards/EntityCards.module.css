@@ -1,0 +1,323 @@
+.sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.subtle {
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.zoom {
+  transition: transform 700ms var(--ease-out);
+}
+
+/* ---------- Poster (show) ---------- */
+
+.posterLink {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.posterMedia {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    box-shadow var(--dur-slow) var(--ease-out);
+}
+
+.posterCount {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: rgb(8 8 12 / 0.6);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.posterBody {
+  padding-inline: 2px;
+}
+
+.posterTitle {
+  font-size: 15.5px;
+  letter-spacing: -0.01em;
+  transition: color var(--dur-fast);
+}
+
+@media (hover: hover) {
+  .posterLink:hover .posterMedia {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+  .posterLink:hover .zoom {
+    transform: scale(1.05);
+  }
+  .posterLink:hover .posterTitle {
+    color: var(--accent-text);
+  }
+}
+
+/* ---------- Character ---------- */
+
+.character {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition:
+    border-color var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+
+.character:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+
+.avatar {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.initials {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: #fff;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
+}
+
+.characterText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.characterName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* ---------- Tile (channel / genre) ---------- */
+
+.tileLink {
+  position: relative;
+  display: block;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.tileArt {
+  transition: transform 700ms var(--ease-out);
+}
+
+.genre .tileArt {
+  aspect-ratio: 5 / 3;
+}
+
+.tileShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0.05) 20%, rgb(0 0 0 / 0.7) 100%);
+}
+
+.tileContent {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  line-height: 1.25;
+}
+
+.tileTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(18px, 2vw, 22px);
+  letter-spacing: -0.02em;
+}
+
+.tileMeta {
+  font-size: 12.5px;
+  opacity: 0.8;
+}
+
+.tileArrow {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  opacity: 0;
+  transform: translate(-4px, 4px);
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .tileLink:hover .tileArt {
+    transform: scale(1.07);
+  }
+  .tileLink:hover .tileArrow {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- Stacked (playlist) ---------- */
+
+.stackLink {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stackMedia {
+  position: relative;
+  display: grid;
+  padding-top: 18px;
+}
+
+.stackLayer {
+  grid-area: 1 / 1;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+.stackLayer:nth-last-child(3) {
+  transform: translateY(-18px) scale(0.88);
+  opacity: 0.55;
+}
+
+.stackLayer:nth-last-child(2) {
+  transform: translateY(-9px) scale(0.94);
+  opacity: 0.8;
+}
+
+@media (hover: hover) {
+  .stackLink:hover .stackLayer:nth-last-child(3) {
+    transform: translateY(-24px) scale(0.88) rotate(-2deg);
+  }
+  .stackLink:hover .stackLayer:nth-last-child(2) {
+    transform: translateY(-13px) scale(0.94) rotate(1.5deg);
+  }
+  .stackLink:hover .stackLayer:last-child {
+    transform: translateY(2px);
+  }
+  .stackLink:hover .stackTitle {
+    color: var(--accent-text);
+  }
+}
+
+.stackBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stackKicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-subtle);
+}
+
+.stackTitle {
+  font-size: 19px;
+  transition: color var(--dur-fast);
+}
+
+/* ---------- Collection ---------- */
+
+.collectionLink {
+  position: relative;
+  display: block;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.collectionArt {
+  min-height: 220px;
+  transition: transform 900ms var(--ease-out);
+}
+
+.collectionShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.72) 0%, rgb(0 0 0 / 0.2) 70%);
+}
+
+.collectionContent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: clamp(18px, 3vw, 28px);
+  max-width: 480px;
+}
+
+.collectionKicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.collectionTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(22px, 3vw, 30px);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.collectionDesc {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+@media (hover: hover) {
+  .collectionLink:hover .collectionArt {
+    transform: scale(1.04);
+  }
+}

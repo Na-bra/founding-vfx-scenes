@@ -1,0 +1,129 @@
+.hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding-block: clamp(48px, 9vw, 110px) clamp(32px, 5vw, 56px);
+}
+
+.heroGlow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(40% 70% at 15% 30%, var(--accent-soft), transparent 70%),
+    radial-gradient(30% 60% at 85% 10%, rgb(255 181 71 / 0.1), transparent 70%);
+}
+
+.heroGlow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(60% 80% at 50% 30%, #000, transparent);
+  opacity: 0.6;
+}
+
+.heroInner {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.heroTitle {
+  font-size: clamp(36px, 6vw, 68px);
+  letter-spacing: -0.045em;
+  max-width: 16ch;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.board {
+  scroll-margin-top: calc(var(--nav-height) + 12px);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px;
+  margin-bottom: 18px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-muted);
+  transition:
+    background-color var(--dur),
+    color var(--dur);
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tabActive {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.tabActive:hover {
+  color: var(--accent-contrast);
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.filters::-webkit-scrollbar {
+  display: none;
+}
+
+.filters > a {
+  flex-shrink: 0;
+}
+
+.filterLabel {
+  flex-shrink: 0;
+  width: 64px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+}
