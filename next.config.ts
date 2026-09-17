@@ -8,13 +8,23 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 ];
 
+const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname : null;
+
 const nextConfig: NextConfig = {
   // Self-contained server bundle for the Docker image (see Dockerfile).
   output: "standalone",
   poweredByHeader: false,
   images: {
-    // Add the public hostnames of uploaded artwork (e.g. an R2 custom domain) here.
-    remotePatterns: process.env.NEXT_PUBLIC_ASSET_HOST ? [{ protocol: "https", hostname: process.env.NEXT_PUBLIC_ASSET_HOST }] : [],
+    // Artwork uploaded through the admin lives in Supabase Storage; NEXT_PUBLIC_ASSET_HOST adds another host (e.g. a CDN).
+    remotePatterns: [
+      ...(supabaseHost ? [{ protocol: "https" as const, hostname: supabaseHost, pathname: "/storage/v1/object/public/**" }] : []),
+      ...(process.env.NEXT_PUBLIC_ASSET_HOST ? [{ protocol: "https" as const, hostname: process.env.NEXT_PUBLIC_ASSET_HOST }] : []),
+    ],
+  },
+  experimental: {
+    // Admin forms upload up to two 5 MB images at once.
+    serverActions: { bodySizeLimit: "12mb" },
+    proxyClientMaxBodySize: "12mb",
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

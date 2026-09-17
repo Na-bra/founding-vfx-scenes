@@ -106,7 +106,9 @@ model User {
   id           String    @id @default(cuid())
   email        String    @unique
   username     String    @unique
-  /// Argon2id hash. Plaintext passwords are never stored.
+  /// Supabase Auth user id. Credentials live in Supabase Auth, never in this table.
+  authUserId   String?   @unique @db.Uuid
+  /// Unused while Supabase Auth handles credentials; kept for future non-Supabase auth.
   passwordHash String?
   role         Role      @default(member)
   discordName  String?

@@ -120,7 +120,11 @@ const OPEN_STATUSES = new Set(["pending", "under_review", "planned", "in_progres
  * snapshot for production.
  */
 export function buildMemoryRepository(ds: Dataset, hooks: RepositoryHooks): ContentRepository {
-  const { channels, genres, tags, shows, characters, scenePacks, playlists, collections, requests, announcements, changelog } = ds;
+  const { channels, genres, tags, shows, playlists, collections, requests, announcements, changelog } = ds;
+  // Hidden (draft/unpublished) shows are absent from the dataset; drop anything that belongs to them.
+  const visibleShowIds = new Set(shows.map((s) => s.id));
+  const characters = ds.characters.filter((c) => visibleShowIds.has(c.showId));
+  const scenePacks = ds.scenePacks.filter((p) => visibleShowIds.has(p.showId));
 
   const showsById = byId(shows);
   const channelsById = byId(channels);

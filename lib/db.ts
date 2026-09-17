@@ -16,7 +16,12 @@ function createClient() {
   const connectionString = url.replace(/([?&])pgbouncer=true&?/, "$1").replace(/[?&]$/, "");
   const adapter = new PrismaPg({
     connectionString,
-    max: Number(process.env.DATABASE_POOL_MAX ?? 5),
+    // Must comfortably exceed the number of queries a single page runs in parallel,
+    // or transactions can't get a connection. Supabase's pooler allows far more.
+    max: Number(process.env.DATABASE_POOL_MAX ?? 12),
+    // Fail fast instead of queueing forever when the pool is saturated.
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
     // Supabase requires TLS; its pooler certificate isn't in Node's default CA bundle.
     ssl: { rejectUnauthorized: false },
   });

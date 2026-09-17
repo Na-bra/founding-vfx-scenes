@@ -82,3 +82,27 @@ describe("resolveScenePackDownload", () => {
     expect(await resolveScenePackDownload("eleven-season-4")).toEqual({ status: "redirect", url: "https://files.example.com/x.zip" });
   });
 });
+
+describe("TeraBox links", () => {
+  const link = (url: string) =>
+    getStorageProvider("terabox").resolveDownload({ id: "1", scenePackId: "p", provider: "terabox", downloadUrl: url, health: "unknown" });
+
+  it("accepts TeraBox share domains and subdomains", async () => {
+    for (const url of [
+      "https://terabox.com/s/1abcDEF",
+      "https://www.terabox.app/sharing/link?surl=abc123",
+      "https://1024terabox.com/s/1xyz",
+      "https://www.4funbox.com/s/1xyz",
+      "https://nephobox.com/s/1xyz",
+      "https://terasharelink.com/s/1xyz",
+    ]) {
+      expect((await link(url)).ok, url).toBe(true);
+    }
+  });
+
+  it("rejects look-alike and non-TeraBox hosts", async () => {
+    for (const url of ["https://terabox.com.evil.net/s/1", "https://notterabox.com/s/1", "http://terabox.com/s/1"]) {
+      expect((await link(url)).ok, url).toBe(false);
+    }
+  });
+});

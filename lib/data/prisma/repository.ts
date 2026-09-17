@@ -31,8 +31,11 @@ const hooks: RepositoryHooks = {
 
 type Snapshot = { repo: ContentRepository; loadedAt: number };
 
-let current: Snapshot | null = null;
-let inflight: Promise<Snapshot> | null = null;
+// Kept on globalThis so every bundle (pages, server actions, route handlers) shares one snapshot
+// and invalidation from an admin save reaches the pages immediately.
+type Store = { current: Snapshot | null; inflight: { generation: number; promise: Promise<Snapshot> } | null; generation: number };
+const state = globalThis as unknown as { __fvxSnapshot?: Store };
+const store = (state.__fvxSnapshot ??= { current: null, inflight: null, generation: 0 });
 
 async function loadWithRetry(): Promise<Dataset> {
   try {
@@ -45,19 +48,27 @@ async function loadWithRetry(): Promise<Dataset> {
   }
 }
 
-async function refresh(): Promise<Snapshot> {
+async function refresh(generation: number): Promise<Snapshot> {
   const dataset: Dataset = await loadWithRetry();
-  current = { repo: buildMemoryRepository(dataset, hooks), loadedAt: Date.now() };
-  return current;
+  const snapshot = { repo: buildMemoryRepository(dataset, hooks), loadedAt: Date.now() };
+  // A load that started before an admin write must not overwrite fresher data.
+  if (generation === store.generation) store.current = snapshot;
+  return snapshot;
 }
 
 async function snapshot(): Promise<ContentRepository> {
+  const { current } = store;
   if (current && Date.now() - current.loadedAt < SNAPSHOT_TTL_MS) return current.repo;
-  inflight ??= refresh().finally(() => {
-    inflight = null;
-  });
+
+  if (!store.inflight || store.inflight.generation !== store.generation) {
+    const generation = store.generation;
+    const promise = refresh(generation).finally(() => {
+      if (store.inflight?.promise === promise) store.inflight = null;
+    });
+    store.inflight = { generation, promise };
+  }
   try {
-    return (await inflight).repo;
+    return (await store.inflight.promise).repo;
   } catch (error) {
     if (current) {
       console.error("[db] content refresh failed; serving previous snapshot", error);
@@ -69,7 +80,8 @@ async function snapshot(): Promise<ContentRepository> {
 
 /** Forces the next read to reload from the database (call after admin writes). */
 export function invalidateContentSnapshot() {
-  current = null;
+  store.generation++;
+  store.current = null;
 }
 
 type Method = Exclude<keyof ContentRepository, "source" | "createReport">;
