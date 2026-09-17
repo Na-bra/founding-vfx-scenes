@@ -2,7 +2,7 @@
 
 A ScenePack discovery, request and download platform for editors. Built with Next.js 16 (App Router), React 19 and TypeScript.
 
-> **Status:** Phases 1–5. Content is stored in **Supabase** (PostgreSQL). Set `DATA_SOURCE=sample` to run on built-in demo data without a database.
+> **Status:** Phases 1–6. Content lives in **Supabase** (PostgreSQL) and is managed from the admin dashboard at `/admin`. Set `DATA_SOURCE=sample` to run on built-in demo data without a database.
 
 ## Quick start
 
@@ -18,6 +18,7 @@ npm run dev                  # http://localhost:3000
 | `npm run check` | Lint, typecheck, unit tests and Prisma schema validation |
 | `npm test` | Vitest unit tests (search, repository, storage, download flow, SigV4 signing) |
 | `npm run db:migrate` / `db:seed` / `db:studio` | Apply migrations / load demo content / browse data |
+| `npm run admin:create -- --email you@example.com` | Create or promote an admin (prompts for a password) |
 
 ## Docker
 
@@ -45,6 +46,29 @@ docker run -p 3000:3000 --env-file .env foundingvfx
 **Public site** — homepage (cinematic hero, featured, recently added, popular shows, channels, genres, playlists, collections, most-wanted and latest requests, what's new) · ScenePack library with combinable filters, sorting, pagination and quick view · ScenePack detail pages (metadata, editing facts, previews, similar packs, favorite/share/copy/report) · show, character, channel, genre, playlist and collection pages · global search with autocomplete and a `/` or `⌘K` command palette · request board with tabs and filters, request detail pages, search-first "request a ScenePack" flow · device-local favorites · Surprise Me · changelog · legal page scaffolds · contact · 404/error/loading/empty states · dark/light theme (persisted, follows OS until chosen) · full mobile layouts.
 
 **Infrastructure** — repository abstraction · provider-independent storage layer (Google Drive, MEGA, TeraBox, any HTTPS URL, Cloudflare R2 and Backblaze B2 with presigned URLs) · download gateway with monetization hook (off) · public read API · rate limiting · security headers · SEO metadata, sitemap, robots, Open Graph image, PWA manifest · full PostgreSQL schema.
+
+## Admin dashboard (`/admin`)
+
+Create the first account, then sign in at `/admin/login`:
+
+```bash
+npm run admin:create -- --email you@example.com --role owner
+```
+
+Everything on the public site is managed here — no code changes or redeploys:
+
+- **ScenePacks** — full metadata, thumbnail upload, characters/genres/tags, technical specs, editing facts, download destination, version history, duplicate detection, draft → preview → publish, and scheduled publishing.
+- **Shows, characters, channels, genres, tags** — with poster/banner/artwork uploads and seasons.
+- **Playlists & collections** — drag-to-reorder items, visibility and featured flags.
+- **Requests** — queue sorted by priority and votes, status changes, link the ScenePack that fulfils a request.
+- **Reports** — resolve or dismiss what visitors flag.
+- **Announcements & changelog** — the site banner and the What's New page.
+- **Admins** — add accounts, change roles, remove access (owner only).
+- **Audit log** — who changed what, when. Download links are recorded as "changed" without storing the link.
+
+**Roles:** Owner (everything, including admins) · Administrator (all content, requests, reports) · Moderator (requests and reports) · Uploader (add/edit ScenePacks, shows and characters; can't delete or feature). Every page and every action re-checks the role on the server.
+
+**Auth** is Supabase Auth (email + password, with reset). Login is rate limited, and a Supabase account alone grants nothing — the role comes from the `users` table. Changes appear on the site within seconds; the `artwork` Storage bucket must be public.
 
 ## Architecture
 
@@ -94,7 +118,7 @@ All settings live in `.env.example`. Social links render as "coming soon" until 
 | --- | --- | --- |
 | 1–4 | Design system, browsing, entity pages, search/filter/sort | ✅ Done |
 | 5 | Supabase database | ✅ Done |
-| 6 | Admin dashboard (CRUD, scheduling, audit log) | — |
+| 6 | Admin dashboard (CRUD, scheduling, audit log) | ✅ Done |
 | 7 | Request submissions, voting, duplicate detection & merge | Search-first flow ready |
 | 8 | Accounts, synced favorites, notifications | — |
 | 9 | Storage health checks | Providers ready |

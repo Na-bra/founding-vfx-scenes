@@ -54,3 +54,21 @@ describe("sample repository", () => {
     expect(pick?.id).toBe(keep);
   });
 });
+
+describe("hidden shows", () => {
+  it("hide their ScenePacks and characters instead of crashing", async () => {
+    const { buildMemoryRepository } = await import("@/lib/data/memory/repository");
+    const { characters, channels, genres, shows, tags } = await import("@/lib/data/sample/taxonomy");
+    const { scenePacks } = await import("@/lib/data/sample/scenepacks");
+    const { announcements, changelog, collections, playlists, requests } = await import("@/lib/data/sample/community");
+    const repo = buildMemoryRepository(
+      { channels, genres, tags, shows: shows.filter((s) => s.slug !== "henry-danger"), characters, scenePacks, playlists, collections, requests, announcements, changelog },
+      { source: "sample", createReport: async () => ({ id: "x" }) },
+    );
+    const { items } = await repo.listScenePacks({ pageSize: 48 });
+    expect(items.some((p) => p.show.slug === "henry-danger")).toBe(false);
+    expect((await repo.listCharacters()).some((c) => c.slug === "henry-hart")).toBe(false);
+    expect(await repo.getPlaylist("superhero-sitcom-essentials")).not.toBeNull();
+    expect((await repo.search("henry")).total).toBeGreaterThanOrEqual(0);
+  });
+});

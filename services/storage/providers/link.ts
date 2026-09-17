@@ -48,9 +48,20 @@ export const googleDriveProvider = linkProvider(
 
 export const megaProvider = linkProvider("mega", "MEGA", ["mega.nz", "mega.io"]);
 
+// TeraBox hands out share links on many mirror domains; all of them are theirs.
 export const teraboxProvider = linkProvider("terabox", "TeraBox", [
   "terabox.com",
-  "1024terabox.com",
-  "teraboxapp.com",
   "terabox.app",
+  "terabox.fun",
+  "teraboxapp.com",
+  "teraboxlink.com",
+  "terasharelink.com",
+  "terafileshare.com",
+  "1024terabox.com",
+  "1024tera.com",
+  "4funbox.com",
+  "mirrobox.com",
+  "nephobox.com",
+  "momerybox.com",
+  "freeterabox.com",
 ]);

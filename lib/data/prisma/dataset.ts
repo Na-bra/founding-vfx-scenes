@@ -10,20 +10,25 @@ import { dateOnly, image, iso, isoOrNull, orUndefined, resolutionFromDb } from "
  * Drafts are loaded too; the repository applies visibility rules (including
  * scheduled publishing) at read time so a pack goes live without a reload.
  */
-export async function loadDataset(): Promise<Dataset> {
+export async function loadDataset(options: { previewScenePackId?: string } = {}): Promise<Dataset> {
   const db = getDb();
-  const [channels, genres, tags, shows, characters, packs, playlists, collections, requests, announcements, changelog] =
-    await Promise.all([
+  const preview = options.previewScenePackId;
+  // Batched rather than one big Promise.all: a single page must not hold more
+  // connections than the pool has, or concurrent writes can't get one.
+  const [channels, genres, tags, shows] = await Promise.all([
       db.channel.findMany({ orderBy: { name: "asc" } }),
       db.genre.findMany({ orderBy: { name: "asc" } }),
       db.tag.findMany({ orderBy: { label: "asc" } }),
       db.show.findMany({
-        where: { status: { in: ["published", "scheduled"] } },
+        // A preview may belong to a show that isn't published yet.
+        where: preview ? {} : { status: { in: ["published", "scheduled"] } },
         include: { genres: true, seasons: { orderBy: { number: "asc" } } },
       }),
+  ]);
+  const [characters, packs] = await Promise.all([
       db.character.findMany(),
       db.scenePack.findMany({
-        where: { status: { in: ["published", "scheduled"] } },
+        where: preview ? { OR: [{ status: { in: ["published", "scheduled"] } }, { id: preview }] } : { status: { in: ["published", "scheduled"] } },
         include: {
           characters: true,
           genres: true,
@@ -31,6 +36,8 @@ export async function loadDataset(): Promise<Dataset> {
           previews: { orderBy: { position: "asc" } },
         },
       }),
+  ]);
+  const [playlists, collections, requests, announcements, changelog] = await Promise.all([
       db.playlist.findMany({
         where: { ownerId: null, visibility: { not: "private" } },
         include: { items: { orderBy: { position: "asc" } } },

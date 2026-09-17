@@ -14,4 +14,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Storage records (`types/storage.ts`, `lib/data/storage.ts`) are server-only; never pass them to client components or API responses.
 - Style with CSS modules using the tokens in `app/globals.css`; don't hard-code theme colors.
 - Don't show metrics or features that aren't backed by real systems — gate them behind `config/features.ts`.
+- Admin pages/actions must call `requireAdmin(permission)` / `authorize(permission)`; never trust the UI.
+- After any admin write, call `contentChanged()` so the public site picks it up.
 - Run `npm run check` before finishing.
