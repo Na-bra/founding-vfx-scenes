@@ -59,6 +59,7 @@ Everything on the public site is managed here — no code changes or redeploys:
 
 - **ScenePacks** — full metadata, thumbnail upload, characters/genres/tags, technical specs, editing facts, download destination, version history, duplicate detection, draft → preview → publish, and scheduled publishing.
 - **Shows, characters, channels, genres, tags** — with poster/banner/artwork uploads and seasons.
+- **Import from TMDB** — search a series or film when creating a show and the form is prefilled with title, description, years, genres, network, seasons, poster and banner; afterwards pick cast members to create as characters. Nothing publishes automatically, and artwork is copied into your own Supabase bucket rather than hotlinked. Needs `TMDB_API_KEY`; without it the admin just asks for the details manually.
 - **Playlists & collections** — drag-to-reorder items, visibility and featured flags.
 - **Requests** — queue sorted by priority and votes, status changes, link the ScenePack that fulfils a request.
 - **Reports** — resolve or dismiss what visitors flag.
@@ -111,6 +112,10 @@ The app loads published content into an in-memory snapshot refreshed every 30s (
 ## Configuration
 
 All settings live in `.env.example`. Social links render as "coming soon" until a URL is set — nothing is invented. Secrets (storage keys, database URL) are read only in server modules guarded by `server-only`.
+
+## Attribution
+
+Show metadata and artwork in the admin importer come from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## Roadmap
 

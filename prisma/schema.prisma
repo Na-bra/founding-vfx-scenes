@@ -192,6 +192,9 @@ model Show {
   yearEnd     Int?
   posterUrl   String?
   bannerUrl   String?
+  /// TMDB id this show was imported from, for re-syncing cast and details.
+  tmdbId      Int?
+  tmdbType    String?
   status      PublishStatus @default(draft)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt

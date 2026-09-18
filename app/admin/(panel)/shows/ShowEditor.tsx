@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { requireAdmin } from "@/lib/admin/auth";
 import { can } from "@/lib/admin/permissions";
 import { getDb } from "@/lib/db";
-import { ActionButton, AdminForm, CheckboxGroup, ImageInput, SeasonRows, Section, SelectInput, TextArea, TextInput } from "@/components/admin/FormKit";
+import { ActionButton, AdminForm, CheckboxGroup, ImageInput, SeasonRows, Section, SelectInput, TextArea, TextInput, Toggle } from "@/components/admin/FormKit";
 import { AdminPageHead, LinkButton, adminStyles as styles } from "@/components/admin/ui";
 import { deleteShow, saveShow } from "../catalog-actions";
+import { getTmdbDetails, isTmdbConfigured, type TmdbShowDetails } from "@/services/metadata/tmdb";
+import { CastImport } from "./CastImport";
+import { TmdbSearch } from "./TmdbSearch";
+import { normalize } from "@/lib/search/text";
 
-export async function ShowEditor({ id }: { id: string | null }) {
+export async function ShowEditor({ id, tmdb }: { id: string | null; tmdb?: { id: number; type: "tv" | "movie" } }) {
   const admin = await requireAdmin("catalog.write");
   const db = getDb();
   const [record, channels, genres] = await Promise.all([
@@ -22,6 +26,48 @@ export async function ShowEditor({ id }: { id: string | null }) {
     db.genre.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   if (id && !record) notFound();
+
+  // Prefill a new show from TMDB, or load its cast when the show is linked.
+  let imported: TmdbShowDetails | null = null;
+  let importError: string | null = null;
+  const source = tmdb ?? (record?.tmdbId && record.tmdbType ? { id: record.tmdbId, type: record.tmdbType as "tv" | "movie" } : null);
+  if (source && isTmdbConfigured()) {
+    try {
+      imported = await getTmdbDetails(source.id, source.type);
+    } catch (error) {
+      console.error("[admin] TMDB details failed", error);
+      importError = "Couldn't load details from TMDB. Fill the form in manually or try again.";
+    }
+  }
+
+  const prefill = tmdb && imported ? imported : null;
+  const byName = <T extends { id: string; name: string }>(items: T[], name: string) => items.find((x) => normalize(x.name) === normalize(name));
+  const matchedGenres = prefill ? prefill.genres.map((g) => byName(genres, g)).filter((g) => g !== undefined) : [];
+  const missingGenres = prefill ? prefill.genres.filter((g) => !byName(genres, g)) : [];
+  const matchedChannel = prefill?.network ? byName(channels, prefill.network) : undefined;
+  const missingChannel = prefill?.network && !matchedChannel ? prefill.network : null;
+  const values = {
+    title: prefill?.title ?? record?.title ?? "",
+    aliases: (prefill?.aliases ?? record?.aliases ?? []).join(", "),
+    format: prefill ? (prefill.mediaType === "movie" ? "film" : "series") : (record?.format ?? "series"),
+    description: prefill?.description ?? record?.description ?? "",
+    yearStart: prefill?.yearStart ?? record?.yearStart ?? "",
+    yearEnd: (prefill ? prefill.yearEnd : record?.yearEnd) ?? "",
+    channelId: matchedChannel?.id ?? record?.channelId ?? "",
+    genreIds: prefill ? matchedGenres.map((g) => g.id) : record?.genres.map((g) => g.genreId),
+    seasons: prefill
+      ? prefill.seasons.map((s) => ({ number: s.number, year: s.year ?? ("" as const), episodeCount: s.episodeCount ?? ("" as const) }))
+      : (record?.seasons ?? []).map((s) => ({ number: s.number, year: s.year ?? ("" as const), episodeCount: s.episodeCount ?? ("" as const) })),
+  };
+
+  const castOptions = imported && record
+    ? imported.cast.map((c) => ({
+        name: c.name,
+        actor: c.actor,
+        profileUrl: c.profileUrl,
+        exists: record.characters.some((x) => normalize(x.name) === normalize(c.name)),
+      }))
+    : [];
 
   return (
     <>
@@ -46,23 +92,53 @@ export async function ShowEditor({ id }: { id: string | null }) {
           )
         }
       />
-      <AdminForm action={saveShow.bind(null, id)} submitLabel={record ? "Save changes" : "Create show"}>
+      {!record && !prefill && (
+        <TmdbSearch configured={isTmdbConfigured()} />
+      )}
+      {importError && <p className={styles.notice}>{importError}</p>}
+      {prefill && (
+        <p className={styles.prefilled}>
+          <Sparkles size={18} aria-hidden /> Prefilled from TMDB — check the details, then create the show.
+        </p>
+      )}
+
+      {/* Remount when the imported show changes: selects, season rows and genre
+          checkboxes hold their own state and would otherwise keep old values. */}
+      <AdminForm
+        key={prefill ? `tmdb-${prefill.id}` : (record?.id ?? "new")}
+        action={saveShow.bind(null, id)}
+        submitLabel={record ? "Save changes" : "Create show"}
+      >
+        {(prefill || record?.tmdbId) && (
+          <>
+            <input type="hidden" name="tmdbId" value={prefill?.id ?? record?.tmdbId ?? ""} />
+            <input type="hidden" name="tmdbType" value={prefill?.mediaType ?? record?.tmdbType ?? ""} />
+          </>
+        )}
+        {prefill && (
+          <>
+            <input type="hidden" name="tmdbPosterUrl" value={prefill.posterUrl ?? ""} />
+            <input type="hidden" name="tmdbBannerUrl" value={prefill.bannerUrl ?? ""} />
+            {missingChannel && <input type="hidden" name="newChannelName" value={missingChannel} />}
+            {missingGenres.length > 0 && <input type="hidden" name="newGenreNames" value={missingGenres.join(", ")} />}
+          </>
+        )}
         <Section title="Details">
-          <TextInput label="Title" name="title" defaultValue={record?.title} required maxLength={160} />
+          <TextInput label="Title" name="title" defaultValue={values.title} required maxLength={160} />
           <TextInput label="Slug" name="slug" defaultValue={record?.slug} hint="Leave blank to generate from the title" />
           <SelectInput
             label="Format"
             name="format"
-            defaultValue={record?.format ?? "series"}
+            defaultValue={values.format}
             options={[
               { value: "series", label: "Series" },
               { value: "film", label: "Film" },
               { value: "special", label: "Special" },
             ]}
           />
-          <SelectInput label="Channel" name="channelId" defaultValue={record?.channelId ?? ""} placeholder="Choose a channel…" options={channels.map((c) => ({ value: c.id, label: c.name }))} />
-          <TextInput label="First year" name="yearStart" type="number" min={1900} max={2100} defaultValue={record?.yearStart} required />
-          <TextInput label="Last year" name="yearEnd" type="number" min={1900} max={2100} defaultValue={record?.yearEnd ?? ""} hint="Blank if still running" />
+          <SelectInput label="Channel" name="channelId" defaultValue={values.channelId} placeholder="Choose a channel…" options={channels.map((c) => ({ value: c.id, label: c.name }))} />
+          <TextInput label="First year" name="yearStart" type="number" min={1900} max={2100} defaultValue={values.yearStart} required />
+          <TextInput label="Last year" name="yearEnd" type="number" min={1900} max={2100} defaultValue={values.yearEnd} hint="Blank if still running" />
           <SelectInput
             label="Visibility"
             name="status"
@@ -74,18 +150,54 @@ export async function ShowEditor({ id }: { id: string | null }) {
             ]}
             hint="Hidden shows also hide their ScenePacks"
           />
-          <TextInput label="Also known as" name="aliases" defaultValue={record?.aliases.join(", ")} hint="Comma-separated. Used by search." wide />
-          <TextArea label="Description" name="description" defaultValue={record?.description} maxLength={2000} rows={3} />
-          <CheckboxGroup label="Genres" name="genreIds" options={genres.map((g) => ({ value: g.id, label: g.name }))} defaultValue={record?.genres.map((g) => g.genreId)} />
+          <TextInput label="Also known as" name="aliases" defaultValue={values.aliases} hint="Comma-separated. Used by search." wide />
+          <TextArea label="Description" name="description" defaultValue={values.description} maxLength={2000} rows={3} />
+          <CheckboxGroup
+            label="Genres"
+            name="genreIds"
+            options={genres.map((g) => ({ value: g.id, label: g.name }))}
+            defaultValue={values.genreIds}
+          />
+          {(missingChannel || missingGenres.length > 0) && (
+            <Toggle
+              label={`Also create from TMDB: ${[missingChannel, ...missingGenres].filter(Boolean).join(", ")}`}
+              name="createMissing"
+              defaultChecked
+              hint="Adds the channel/genres we don't have yet"
+            />
+          )}
         </Section>
         <Section title="Artwork">
-          <ImageInput label="Poster" name="poster" current={record?.posterUrl} aspect="2 / 3" hint="Portrait, e.g. 1000×1500" />
-          <ImageInput label="Banner" name="banner" current={record?.bannerUrl} aspect="21 / 9" hint="Wide, e.g. 2520×1080" />
+          <ImageInput
+            label="Poster"
+            name="poster"
+            current={record?.posterUrl ?? prefill?.posterUrl}
+            aspect="2 / 3"
+            hint={prefill?.posterUrl ? "From TMDB — saved to your storage. Upload a file to replace it." : "Portrait, e.g. 1000×1500"}
+          />
+          <ImageInput
+            label="Banner"
+            name="banner"
+            current={record?.bannerUrl ?? prefill?.bannerUrl}
+            aspect="21 / 9"
+            hint={prefill?.bannerUrl ? "From TMDB — saved to your storage. Upload a file to replace it." : "Wide, e.g. 2520×1080"}
+          />
         </Section>
         <Section title="Seasons">
-          <SeasonRows name="seasons" defaultValue={(record?.seasons ?? []).map((s) => ({ number: s.number, year: s.year ?? "", episodeCount: s.episodeCount ?? "" }))} />
+          <SeasonRows name="seasons" defaultValue={values.seasons} />
         </Section>
       </AdminForm>
+
+      {record && castOptions.length > 0 && (
+        <section className={styles.panel} style={{ marginTop: 16 }}>
+          <div className={styles.panelHead}>
+            <h2 className={styles.panelTitle}>Import cast from TMDB</h2>
+          </div>
+          <div style={{ padding: 16 }}>
+            <CastImport showId={record.id} cast={castOptions} />
+          </div>
+        </section>
+      )}
 
       {record && (
         <section className={styles.panel} style={{ marginTop: 16 }}>
