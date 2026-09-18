@@ -43,6 +43,44 @@ export async function uploadImageField(formData: FormData, field: string, folder
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+/**
+ * Copies an image from an allowed remote host (TMDB) into our own bucket, so
+ * artwork is served from Supabase rather than hotlinked.
+ */
+export async function importImageFromUrl(rawUrl: string, folder: string, allowedHosts: string[]): Promise<string | undefined> {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:" || !allowedHosts.includes(url.hostname)) return undefined;
+
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+    if (!response.ok) return undefined;
+    const length = Number(response.headers.get("content-length") ?? 0);
+    if (length > MAX_BYTES) return undefined;
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > MAX_BYTES) return undefined;
+    const type = sniff(bytes);
+    if (!type) return undefined;
+
+    const path = `${folder}/${randomUUID()}.${type.ext}`;
+    const supabase = createSupabaseAdminClient();
+    const { error } = await supabase.storage.from(BUCKET).upload(path, bytes, { contentType: type.mime, upsert: false });
+    if (error) {
+      console.error("[admin] artwork import failed", error);
+      return undefined;
+    }
+    return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  } catch (error) {
+    console.warn("[admin] artwork import failed", error);
+    return undefined;
+  }
+}
+
 /** Best-effort removal of a replaced image that lives in our bucket. */
 export async function deleteStoredImage(url: string | null | undefined) {
   if (!url) return;

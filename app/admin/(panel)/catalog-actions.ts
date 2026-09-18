@@ -8,7 +8,9 @@ import { audit, diff } from "@/lib/admin/audit";
 import { contentChanged } from "@/lib/admin/content";
 import { actionError, f, isNavigationError, parseForm, slugify } from "@/lib/admin/forms";
 import type { FormState } from "@/lib/admin/form-state";
-import { deleteStoredImage, resolveImageField } from "@/lib/admin/upload";
+import { deleteStoredImage, importImageFromUrl, resolveImageField } from "@/lib/admin/upload";
+import { can } from "@/lib/admin/permissions";
+import { TMDB_IMAGE_HOST } from "@/services/metadata/tmdb";
 
 /* ---------------- Tags ---------------- */
 
@@ -120,15 +122,27 @@ const showSchema = z
     slug: f.slug(),
     aliases: f.list(),
     format: z.enum(["series", "film", "special"]),
-    channelId: z.string().min(1, "Choose a channel"),
+    channelId: f.optText(64),
     genreIds: f.ids(),
+    // Filled by the TMDB import; reviewed by the admin before saving.
+    tmdbId: f.optInt(1, 100_000_000),
+    tmdbType: z.preprocess((v) => (v === "" ? undefined : v), z.enum(["tv", "movie"]).optional()),
+    tmdbPosterUrl: f.optText(500),
+    tmdbBannerUrl: f.optText(500),
+    newChannelName: f.optText(80),
+    newGenreNames: f.list(),
+    createMissing: f.bool(),
     yearStart: f.int(1900, 2100),
     yearEnd: f.optInt(1900, 2100),
     description: f.optText(2000),
     status: z.enum(["draft", "published", "unpublished"]),
     seasons: f.json(seasonRows).default([]),
   })
-  .refine((d) => d.yearEnd === undefined || d.yearEnd >= d.yearStart, { message: "Must be after the start year", path: ["yearEnd"] });
+  .refine((d) => d.yearEnd === undefined || d.yearEnd >= d.yearStart, { message: "Must be after the start year", path: ["yearEnd"] })
+  .refine((d) => Boolean(d.channelId) || (d.createMissing && Boolean(d.newChannelName)), {
+    message: "Choose a channel",
+    path: ["channelId"],
+  });
 
 export async function saveShow(id: string | null, _: FormState, formData: FormData): Promise<FormState> {
   try {
@@ -141,12 +155,37 @@ export async function saveShow(id: string | null, _: FormState, formData: FormDa
     if (new Set(numbers).size !== numbers.length) return { message: "Each season number can only appear once.", errors: { seasons: "Duplicate season numbers" } };
 
     const db = getDb();
+
+    // Create the channel/genres TMDB suggested but we don't have yet.
+    let channelId = d.channelId;
+    const genreIds = [...d.genreIds];
+    if (d.createMissing && (d.newChannelName || d.newGenreNames.length > 0)) {
+      if (!can(admin.role, "taxonomy.write")) {
+        return { message: "Only administrators can create new channels and genres. Uncheck that option and pick existing ones." };
+      }
+      if (!channelId && d.newChannelName) {
+        const slug = slugify(d.newChannelName);
+        const channel = await db.channel.upsert({ where: { slug }, update: {}, create: { slug, name: d.newChannelName, description: "" } });
+        channelId = channel.id;
+        await audit(admin, "channel.create", { type: "channel", id: channel.id, label: channel.name });
+      }
+      for (const name of d.newGenreNames) {
+        const slug = slugify(name);
+        if (!slug) continue;
+        const genre = await db.genre.upsert({ where: { slug }, update: {}, create: { slug, name, description: "" } });
+        if (!genreIds.includes(genre.id)) genreIds.push(genre.id);
+      }
+    }
+    if (!channelId) return { message: "Choose a channel.", errors: { channelId: "Required" } };
+
     const data = {
       title: d.title,
       slug: d.slug ?? slugify(d.title),
       aliases: d.aliases,
       format: d.format,
-      channelId: d.channelId,
+      channelId,
+      tmdbId: d.tmdbId ?? null,
+      tmdbType: d.tmdbType ?? null,
       yearStart: d.yearStart,
       yearEnd: d.yearEnd ?? null,
       description: d.description ?? "",
@@ -166,11 +205,22 @@ export async function saveShow(id: string | null, _: FormState, formData: FormDa
         resolveImageField(formData, "poster", "shows", before.posterUrl),
         resolveImageField(formData, "banner", "shows", before.bannerUrl),
       ]);
-      const update = { ...data, ...(posterUrl !== undefined && { posterUrl }), ...(bannerUrl !== undefined && { bannerUrl }) };
+      const update = {
+        ...data,
+        ...(posterUrl !== undefined && { posterUrl }),
+        ...(bannerUrl !== undefined && { bannerUrl }),
+        // Only pull TMDB artwork in when the field is still empty.
+        ...(posterUrl === undefined && !before.posterUrl && d.tmdbPosterUrl
+          ? { posterUrl: (await importImageFromUrl(d.tmdbPosterUrl, "shows", [TMDB_IMAGE_HOST])) ?? null }
+          : {}),
+        ...(bannerUrl === undefined && !before.bannerUrl && d.tmdbBannerUrl
+          ? { bannerUrl: (await importImageFromUrl(d.tmdbBannerUrl, "shows", [TMDB_IMAGE_HOST])) ?? null }
+          : {}),
+      };
       await db.$transaction([
         db.show.update({ where: { id }, data: update }),
         db.showGenre.deleteMany({ where: { showId: id } }),
-        db.showGenre.createMany({ data: d.genreIds.map((genreId) => ({ showId: id, genreId })) }),
+        db.showGenre.createMany({ data: genreIds.map((genreId) => ({ showId: id, genreId })) }),
         // Seasons are replaced as a set; episodes cascade.
         db.season.deleteMany({ where: { showId: id, number: { notIn: seasonData.map((s) => s.number) } } }),
         ...seasonData.map((s) =>
@@ -183,7 +233,7 @@ export async function saveShow(id: string | null, _: FormState, formData: FormDa
       ]);
       await audit(admin, "show.update", { type: "show", id, label: d.title }, {
         ...diff(before, update),
-        ...(before.genres.map((g) => g.genreId).sort().join() !== [...d.genreIds].sort().join() && { genres: { from: "…", to: "…" } }),
+        ...(before.genres.map((g) => g.genreId).sort().join() !== [...genreIds].sort().join() && { genres: { from: "…", to: "…" } }),
       });
     } else {
       const [posterUrl, bannerUrl] = await Promise.all([
@@ -193,9 +243,9 @@ export async function saveShow(id: string | null, _: FormState, formData: FormDa
       const created = await db.show.create({
         data: {
           ...data,
-          posterUrl: posterUrl ?? null,
-          bannerUrl: bannerUrl ?? null,
-          genres: { create: d.genreIds.map((genreId) => ({ genreId })) },
+          posterUrl: posterUrl ?? (d.tmdbPosterUrl ? ((await importImageFromUrl(d.tmdbPosterUrl, "shows", [TMDB_IMAGE_HOST])) ?? null) : null),
+          bannerUrl: bannerUrl ?? (d.tmdbBannerUrl ? ((await importImageFromUrl(d.tmdbBannerUrl, "shows", [TMDB_IMAGE_HOST])) ?? null) : null),
+          genres: { create: genreIds.map((genreId) => ({ genreId })) },
           seasons: { create: seasonData },
         },
       });
